@@ -24,6 +24,32 @@ export default function Home() {
       setUsername(savedUsername);
       setUserId(savedUserId);
     }
+
+    // Check for OAuth callback
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlUserId = params.get('userId');
+      const urlUsername = params.get('username');
+      const authSuccess = params.get('auth');
+      
+      if (authSuccess === 'success' && urlUserId && urlUsername) {
+        const decodedUsername = decodeURIComponent(urlUsername);
+        setUsername(decodedUsername);
+        setUserId(urlUserId);
+        localStorage.setItem('crabUsername', decodedUsername);
+        localStorage.setItem('crabUserId', urlUserId);
+        
+        // Clean up URL
+        window.history.replaceState({}, '', '/');
+        setGameStarted(true);
+      }
+      
+      const error = params.get('error');
+      if (error) {
+        console.error('Auth error:', error);
+        window.history.replaceState({}, '', '/');
+      }
+    }
   }, []);
 
   const handleAuthSuccess = (user: string, id: string) => {
