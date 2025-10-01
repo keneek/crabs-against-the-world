@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Crab Walking Adventure - Supabase Setup Script
-echo "🦀 Setting up Supabase for Crab Walking Adventure..."
+# Crabs Against the World - Supabase Setup Script
+echo "🦀 Setting up Supabase for Crabs Against the World..."
 
 # Check if supabase CLI is installed
 if ! command -v supabase &> /dev/null; then

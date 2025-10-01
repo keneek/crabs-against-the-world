@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Crab Walking Adventure',
-  description: 'A fun game where you walk as a crab and dodge sea animals!',
+  title: 'Crabs Against the World',
+  description: 'An epic game where crabs fight for survival! Battle bosses, collect shells, and dominate the leaderboard!',
 };
 
 export default function RootLayout({

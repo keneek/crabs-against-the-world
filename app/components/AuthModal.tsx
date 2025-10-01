@@ -60,7 +60,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-gradient-to-b from-blue-500 to-blue-700 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 border-4 border-yellow-400">
         <h2 className="text-3xl font-bold text-white mb-4 text-center">
-          🦀 Join the Crab League! 🦀
+          🦀 Join Crabs Against the World! 🌍
         </h2>
         <p className="text-white mb-6 text-center">
           Enter your username to compete on the global leaderboard!

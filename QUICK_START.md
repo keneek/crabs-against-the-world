@@ -1,4 +1,4 @@
-# 🚀 Quick Start Guide
+# 🚀 Crabs Against the World - Quick Start Guide
 
 ## 1️⃣ Install Dependencies
 ```bash

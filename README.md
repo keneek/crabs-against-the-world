@@ -1,6 +1,6 @@
-# 🦀 Crab Walking Adventure - BOSS EDITION
+# 🦀 Crabs Against the World
 
-An epic browser game where you play as a crab, collect shells, use power-ups strategically, and battle ocean bosses!
+An epic browser game where you play as a crab fighting for survival, collecting shells, using power-ups strategically, and battling mighty ocean bosses!
 
 Built with **Next.js**, **Phaser 3**, **Supabase**, and deployed on **Vercel**.
 
