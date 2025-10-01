@@ -27,10 +27,13 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     setError('');
 
     try {
+      const redirectUrl = getRedirectUrl();
+      console.log('OAuth Redirect URL:', redirectUrl);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: getRedirectUrl(),
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
