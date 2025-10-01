@@ -32,11 +32,15 @@ export default function Game({ username, userId }: GameProps) {
 
       gameRef.current = new Phaser.Game(config);
       
-      // Pass user data to game scene
-      if (username && userId) {
-        const scene = gameRef.current.scene.scenes[0] as GameScene;
-        scene.scene.restart({ username, userId });
-      }
+      // Pass user data to scene after creation
+      setTimeout(() => {
+        if (gameRef.current && username && userId) {
+          const scene = gameRef.current.scene.getScene('GameScene') as GameScene;
+          if (scene && scene.scene.isActive('GameScene')) {
+            scene.scene.restart({ username, userId });
+          }
+        }
+      }, 100);
     }
 
     return () => {

@@ -969,11 +969,32 @@ export default class GameScene extends Phaser.Scene {
     
     // Save to Supabase if logged in
     if (this.username && this.userId) {
+      console.log('Saving score to Supabase...', {
+        username: this.username,
+        userId: this.userId,
+        score: finalScore,
+      });
+      
       try {
         const { supabase } = await import('@/lib/supabase');
         
+        // Ensure user exists first using upsert (creates if missing, updates if exists)
+        await supabase.from('users').upsert({
+          id: this.userId,
+          username: this.username,
+          total_games: this.totalShellsEver,
+          best_score: Math.max(finalScore, this.highScore),
+          total_shells: this.totalShellsEver,
+          bosses_defeated: this.bossesDefeated,
+        }, {
+          onConflict: 'id',
+          ignoreDuplicates: false,
+        });
+        
+        console.log('✅ User record ready!');
+        
         // Save score
-        await supabase.from('scores').insert([{
+        const { data: scoreData, error: scoreError } = await supabase.from('scores').insert([{
           user_id: this.userId,
           username: this.username,
           score: finalScore,
@@ -982,16 +1003,19 @@ export default class GameScene extends Phaser.Scene {
           bosses_defeated: this.bossesDefeated,
         }]);
         
-        // Update user stats
-        await supabase.from('users').update({
-          total_games: this.totalShellsEver,
-          best_score: Math.max(finalScore, this.highScore),
-          total_shells: this.totalShellsEver,
-          bosses_defeated: this.bossesDefeated,
-        }).eq('id', this.userId);
+        if (scoreError) {
+          console.error('❌ Score insert error:', scoreError);
+        } else {
+          console.log('✅ Score saved successfully to leaderboard!');
+        }
       } catch (error) {
         console.error('Failed to save to leaderboard:', error);
       }
+    } else {
+      console.log('Not saving to Supabase - user not logged in', {
+        hasUsername: !!this.username,
+        hasUserId: !!this.userId,
+      });
     }
     
     // Stop all enemies

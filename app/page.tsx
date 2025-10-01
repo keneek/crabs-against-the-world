@@ -29,39 +29,70 @@ export default function Home() {
       setAvatarUrl(savedAvatar);
     }
 
-    // Check for OAuth callback
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const urlUserId = params.get('userId');
-      const urlUsername = params.get('username');
-      const urlAvatar = params.get('avatar');
-      const authSuccess = params.get('auth');
-      
-      if (authSuccess === 'success' && urlUserId && urlUsername) {
-        const decodedUsername = decodeURIComponent(urlUsername);
-        const decodedAvatar = urlAvatar ? decodeURIComponent(urlAvatar) : null;
+    // Check for OAuth callback and Supabase session
+    const checkAuth = async () => {
+      if (typeof window !== 'undefined') {
+        // First check URL params for OAuth callback
+        const params = new URLSearchParams(window.location.search);
+        const urlUserId = params.get('userId');
+        const urlUsername = params.get('username');
+        const urlAvatar = params.get('avatar');
+        const authSuccess = params.get('auth');
         
-        setUsername(decodedUsername);
-        setUserId(urlUserId);
-        setAvatarUrl(decodedAvatar);
-        
-        localStorage.setItem('crabUsername', decodedUsername);
-        localStorage.setItem('crabUserId', urlUserId);
-        if (decodedAvatar) {
-          localStorage.setItem('crabAvatar', decodedAvatar);
+        if (authSuccess === 'success' && urlUserId && urlUsername) {
+          console.log('OAuth callback received:', { urlUserId, urlUsername, urlAvatar });
+          const decodedUsername = decodeURIComponent(urlUsername);
+          const decodedAvatar = urlAvatar ? decodeURIComponent(urlAvatar) : null;
+          
+          setUsername(decodedUsername);
+          setUserId(urlUserId);
+          setAvatarUrl(decodedAvatar);
+          
+          localStorage.setItem('crabUsername', decodedUsername);
+          localStorage.setItem('crabUserId', urlUserId);
+          if (decodedAvatar) {
+            localStorage.setItem('crabAvatar', decodedAvatar);
+          }
+          
+          // Clean up URL
+          window.history.replaceState({}, '', '/');
+          setGameStarted(true);
+          return;
         }
         
-        // Clean up URL
-        window.history.replaceState({}, '', '/');
-        setGameStarted(true);
+        // Check for active Supabase session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && !savedUsername) {
+          console.log('Found active Supabase session:', session.user);
+          const user = session.user;
+          const username = user.user_metadata?.full_name || 
+                          user.user_metadata?.name || 
+                          user.email?.split('@')[0] || 
+                          'Player';
+          const avatarUrl = user.user_metadata?.avatar_url || 
+                           user.user_metadata?.picture || 
+                           '';
+          
+          setUsername(username);
+          setUserId(user.id);
+          setAvatarUrl(avatarUrl || null);
+          
+          localStorage.setItem('crabUsername', username);
+          localStorage.setItem('crabUserId', user.id);
+          if (avatarUrl) {
+            localStorage.setItem('crabAvatar', avatarUrl);
+          }
+        }
+        
+        const error = params.get('error');
+        if (error) {
+          console.error('Auth error:', error);
+          window.history.replaceState({}, '', '/');
+        }
       }
-      
-      const error = params.get('error');
-      if (error) {
-        console.error('Auth error:', error);
-        window.history.replaceState({}, '', '/');
-      }
-    }
+    };
+    
+    checkAuth();
   }, []);
 
   const handleAuthSuccess = (user: string, id: string, avatar?: string) => {

@@ -26,16 +26,23 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log('Starting Google OAuth, redirect to:', getRedirectUrl());
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: getRedirectUrl(),
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
       if (error) throw error;
+      console.log('OAuth initiated:', data);
       // Redirect happens automatically
     } catch (err: any) {
+      console.error('Google sign in error:', err);
       setError(err.message || 'Failed to sign in with Google');
       setLoading(false);
     }
@@ -65,10 +72,16 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
         localStorage.setItem('crabUserId', existing.id);
         onSuccess(existing.username, existing.id);
       } else {
-        // Create new user
+        // Create new user with all fields initialized
         const { data: newUser, error: insertError } = await supabase
           .from('users')
-          .insert([{ username }])
+          .insert([{ 
+            username,
+            total_games: 0,
+            best_score: 0,
+            total_shells: 0,
+            bosses_defeated: 0,
+          }])
           .select()
           .single();
 
