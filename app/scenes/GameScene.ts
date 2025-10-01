@@ -51,8 +51,8 @@ export default class GameScene extends Phaser.Scene {
   private isTouching: boolean = false;
   private touchX: number = 0;
   private touchY: number = 0;
-  private joystickBase?: Phaser.GameObjects.Circle;
-  private joystickThumb?: Phaser.GameObjects.Circle;
+  private joystickBase?: Phaser.GameObjects.Arc;
+  private joystickThumb?: Phaser.GameObjects.Arc;
   private isMobile: boolean = false;
   private uiScale: number = 1;
   
