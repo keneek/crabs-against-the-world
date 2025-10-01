@@ -20,6 +20,7 @@ export interface Score {
 export interface User {
   id: string;
   username: string;
+  avatar_url?: string;
   total_games: number;
   best_score: number;
   total_shells: number;

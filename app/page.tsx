@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import AuthModal from './components/AuthModal';
 import Leaderboard from './components/Leaderboard';
+import { supabase } from '@/lib/supabase';
 
 const Game = dynamic(() => import('./components/Game'), {
   ssr: false,
@@ -14,15 +15,18 @@ export default function Home() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
     const savedUsername = localStorage.getItem('crabUsername');
     const savedUserId = localStorage.getItem('crabUserId');
+    const savedAvatar = localStorage.getItem('crabAvatar');
     if (savedUsername && savedUserId) {
       setUsername(savedUsername);
       setUserId(savedUserId);
+      setAvatarUrl(savedAvatar);
     }
 
     // Check for OAuth callback
@@ -30,14 +34,22 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const urlUserId = params.get('userId');
       const urlUsername = params.get('username');
+      const urlAvatar = params.get('avatar');
       const authSuccess = params.get('auth');
       
       if (authSuccess === 'success' && urlUserId && urlUsername) {
         const decodedUsername = decodeURIComponent(urlUsername);
+        const decodedAvatar = urlAvatar ? decodeURIComponent(urlAvatar) : null;
+        
         setUsername(decodedUsername);
         setUserId(urlUserId);
+        setAvatarUrl(decodedAvatar);
+        
         localStorage.setItem('crabUsername', decodedUsername);
         localStorage.setItem('crabUserId', urlUserId);
+        if (decodedAvatar) {
+          localStorage.setItem('crabAvatar', decodedAvatar);
+        }
         
         // Clean up URL
         window.history.replaceState({}, '', '/');
@@ -52,18 +64,24 @@ export default function Home() {
     }
   }, []);
 
-  const handleAuthSuccess = (user: string, id: string) => {
+  const handleAuthSuccess = (user: string, id: string, avatar?: string) => {
     setUsername(user);
     setUserId(id);
+    setAvatarUrl(avatar || null);
     setShowAuth(false);
     setGameStarted(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Sign out from Supabase if using OAuth
+    await supabase.auth.signOut();
+    
     localStorage.removeItem('crabUsername');
     localStorage.removeItem('crabUserId');
+    localStorage.removeItem('crabAvatar');
     setUsername(null);
     setUserId(null);
+    setAvatarUrl(null);
     setGameStarted(false);
   };
 
@@ -77,12 +95,23 @@ export default function Home() {
           <div className="flex gap-2">
             {username ? (
               <>
-                <div className="bg-white bg-opacity-20 px-4 py-2 rounded-lg text-white font-bold">
-                  👤 {username}
+                <div className="bg-white bg-opacity-20 px-4 py-2 rounded-lg text-white font-bold flex items-center gap-2">
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt={username}
+                      className="w-8 h-8 rounded-full border-2 border-yellow-400"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-blue-900 font-bold">
+                      {username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span>{username}</span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg"
+                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
                 >
                   Logout
                 </button>

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 interface AuthModalProps {
   onClose: () => void;
-  onSuccess: (username: string, userId: string) => void;
+  onSuccess: (username: string, userId: string, avatarUrl?: string) => void;
 }
 
 const getRedirectUrl = () => {

@@ -18,11 +18,14 @@ export async function GET(request: Request) {
                         user.user_metadata?.name || 
                         user.email?.split('@')[0] || 
                         'Player';
+        const avatarUrl = user.user_metadata?.avatar_url || 
+                         user.user_metadata?.picture || 
+                         '';
         
         // Check if user exists in our database
         const { data: existingUser } = await supabase
           .from('users')
-          .select('id, username')
+          .select('id, username, avatar_url')
           .eq('id', user.id)
           .single();
 
@@ -32,17 +35,23 @@ export async function GET(request: Request) {
             {
               id: user.id,
               username: username,
+              avatar_url: avatarUrl,
               total_games: 0,
               best_score: 0,
               total_shells: 0,
               bosses_defeated: 0,
             },
           ]);
+        } else if (avatarUrl && existingUser.avatar_url !== avatarUrl) {
+          // Update avatar if it changed
+          await supabase.from('users').update({
+            avatar_url: avatarUrl,
+          }).eq('id', user.id);
         }
 
         // Redirect to home with user info in URL
         return NextResponse.redirect(
-          `${requestUrl.origin}?userId=${user.id}&username=${encodeURIComponent(existingUser?.username || username)}&auth=success`
+          `${requestUrl.origin}?userId=${user.id}&username=${encodeURIComponent(existingUser?.username || username)}&avatar=${encodeURIComponent(avatarUrl)}&auth=success`
         );
       }
     } catch (error) {
