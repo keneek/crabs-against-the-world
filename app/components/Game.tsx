@@ -1,10 +1,15 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import GameScene from '../scenes/GameScene';
 
-export default function Game() {
+interface GameProps {
+  username?: string;
+  userId?: string;
+}
+
+export default function Game({ username, userId }: GameProps) {
   const gameRef = useRef<Phaser.Game | null>(null);
 
   useEffect(() => {
@@ -26,6 +31,12 @@ export default function Game() {
       };
 
       gameRef.current = new Phaser.Game(config);
+      
+      // Pass user data to game scene
+      if (username && userId) {
+        const scene = gameRef.current.scene.scenes[0] as GameScene;
+        scene.scene.restart({ username, userId });
+      }
     }
 
     return () => {
@@ -34,7 +45,7 @@ export default function Game() {
         gameRef.current = null;
       }
     };
-  }, []);
+  }, [username, userId]);
 
   return <div id="game-container" />;
 }

@@ -1,8 +1,29 @@
-# 🦀 Crab Walking Adventure
+# 🦀 Crab Walking Adventure - BOSS EDITION
 
-A fun browser game where you play as a crab walking along the beach, dodging bouncing sea animals!
+An epic browser game where you play as a crab, collect shells, use power-ups strategically, and battle ocean bosses!
 
 Built with **Next.js**, **Phaser 3**, **Supabase**, and deployed on **Vercel**.
+
+## 🎮 NEW FEATURES
+
+### Boss Battles
+- 🐳 **Mini-Bosses** appear every 5 levels
+- 🐙 **Kraken King** final boss every 10 levels
+- Throw collected shells at bosses to defeat them!
+- Dodge boss projectiles (shield helps!)
+
+### Multiplayer & Leaderboards
+- 🏆 **Global Leaderboard** with Supabase
+- 👤 **User Accounts** (simple username system)
+- 📊 **Persistent Stats** across sessions
+- 🎯 **All-Time, Weekly, and Daily** rankings
+
+### Strategic Gameplay
+- 🧲 **Magnet** - Auto-collect nearby shells
+- ⚡ **Speed Boost** - Move faster + gem bonuses!
+- 🛡️ **Shield** - Temporary invincibility
+- 🔥 **Combo System** - Chain shells for bonus points
+- 💎 **Rare Gems** with strategic bonuses
 
 ## 🎮 Game Features
 
@@ -23,18 +44,30 @@ yarn install
 pnpm install
 ```
 
-### 2. Set up Supabase (Optional - for leaderboards later)
+### 2. Set up Supabase (For Leaderboards & User Accounts)
 
-1. Create a free account at [supabase.com](https://supabase.com)
-2. Create a new project
-3. Copy your project URL and anon key from Settings → API
-4. Create `.env.local` file:
-
+#### Quick Setup (Automated):
 ```bash
-cp .env.local.example .env.local
+./scripts/setup-supabase.sh
 ```
 
-Then add your Supabase credentials.
+#### Manual Setup:
+1. Create free account at [supabase.com](https://supabase.com)
+2. Create a new project
+3. Run:
+```bash
+supabase login
+supabase link --project-ref your-project-ref
+supabase db push
+```
+4. Get API keys from Settings → API
+5. Create `.env.local`:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+See `SUPABASE_SETUP.md` for detailed instructions.
 
 ### 3. Run the Development Server
 
