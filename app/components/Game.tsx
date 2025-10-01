@@ -14,18 +14,41 @@ export default function Game({ username, userId }: GameProps) {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !gameRef.current) {
+      // Responsive game size - ensure it fits viewport
+      const isMobile = window.innerWidth < 768;
+      const availableHeight = window.innerHeight - 280; // Account for header/footer
+      const gameWidth = isMobile ? Math.min(window.innerWidth - 16, 600) : Math.min(800, window.innerWidth - 40);
+      const gameHeight = isMobile 
+        ? Math.min(availableHeight, 500) 
+        : Math.min(500, availableHeight); // Reduced from 600 to 500
+      
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width: 800,
-        height: 600,
+        width: gameWidth,
+        height: gameHeight,
         parent: 'game-container',
         backgroundColor: '#87CEEB',
+        scale: {
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+        },
         physics: {
           default: 'arcade',
           arcade: {
             gravity: { x: 0, y: 0 },
             debug: false,
+            fps: 60,
           },
+        },
+        fps: {
+          target: 60,
+          forceSetTimeOut: false,
+        },
+        render: {
+          pixelArt: false,
+          antialias: true,
+          antialiasGL: true,
+          powerPreference: 'high-performance',
         },
         scene: [GameScene],
       };

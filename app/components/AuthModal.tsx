@@ -26,8 +26,7 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
     setError('');
 
     try {
-      console.log('Starting Google OAuth, redirect to:', getRedirectUrl());
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: getRedirectUrl(),
@@ -39,10 +38,8 @@ export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
       });
 
       if (error) throw error;
-      console.log('OAuth initiated:', data);
       // Redirect happens automatically
     } catch (err: any) {
-      console.error('Google sign in error:', err);
       setError(err.message || 'Failed to sign in with Google');
       setLoading(false);
     }

@@ -47,6 +47,15 @@ export default class GameScene extends Phaser.Scene {
   private username?: string;
   private userId?: string;
   
+  // Mobile controls
+  private isTouching: boolean = false;
+  private touchX: number = 0;
+  private touchY: number = 0;
+  private joystickBase?: Phaser.GameObjects.Circle;
+  private joystickThumb?: Phaser.GameObjects.Circle;
+  private isMobile: boolean = false;
+  private uiScale: number = 1;
+  
   private scoreText?: Phaser.GameObjects.Text;
   private highScoreText?: Phaser.GameObjects.Text;
   private multiplierText?: Phaser.GameObjects.Text;
@@ -83,6 +92,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Detect mobile and calculate UI scale
+    this.isMobile = this.sys.game.device.os.android || this.sys.game.device.os.iOS || 
+                    this.sys.game.device.os.iPad || this.sys.game.device.os.iPhone ||
+                    window.innerWidth < 768;
+    
+    // Scale UI elements based on game size
+    this.uiScale = Math.min(this.scale.width / 800, 1);
+    
     // Load high score and stats from localStorage
     this.highScore = parseInt(localStorage.getItem('crabHighScore') || '0');
     this.totalShellsEver = parseInt(localStorage.getItem('crabTotalShells') || '0');
@@ -97,13 +114,20 @@ export default class GameScene extends Phaser.Scene {
     // Pick random unlocked color for this game
     this.crabColor = this.unlockedColors[Math.floor(Math.random() * this.unlockedColors.length)];
     
-    // Add beach/ocean background gradient
+    // Add beach/ocean background gradient (responsive)
     const graphics = this.add.graphics();
     graphics.fillGradientStyle(0x87CEEB, 0x87CEEB, 0xF4A460, 0xF4A460, 1);
-    graphics.fillRect(0, 0, 800, 600);
+    graphics.fillRect(0, 0, this.scale.width, this.scale.height);
 
-    // Add water line
-    const water = this.add.rectangle(400, 150, 800, 300, 0x1E90FF, 0.3);
+    // Add water line (responsive)
+    const water = this.add.rectangle(
+      this.scale.width / 2, 
+      this.scale.height * 0.25, 
+      this.scale.width, 
+      this.scale.height * 0.5, 
+      0x1E90FF, 
+      0.3
+    );
 
     // Create particle system for collectibles
     const particleGraphics = this.add.graphics();
@@ -113,14 +137,16 @@ export default class GameScene extends Phaser.Scene {
     particleGraphics.destroy();
 
     this.particles = this.add.particles(0, 0, 'particle', {
-      speed: { min: 50, max: 200 },
-      scale: { start: 1, end: 0 },
-      lifespan: 600,
+      speed: { min: 50, max: 150 },
+      scale: { start: 0.8, end: 0 },
+      lifespan: 400,
       gravityY: 100,
+      quantity: 1,
+      frequency: 50,
     });
     this.particles.stop();
     
-    // Create gem particles (purple/blue)
+    // Create gem particles (purple/blue) - reduced for performance
     const gemParticleGraphics = this.add.graphics();
     gemParticleGraphics.fillStyle(0xFF00FF);
     gemParticleGraphics.fillCircle(4, 4, 4);
@@ -128,77 +154,89 @@ export default class GameScene extends Phaser.Scene {
     gemParticleGraphics.destroy();
 
     this.gemParticles = this.add.particles(0, 0, 'gemParticle', {
-      speed: { min: 100, max: 300 },
-      scale: { start: 1.5, end: 0 },
-      lifespan: 800,
+      speed: { min: 80, max: 200 },
+      scale: { start: 1.2, end: 0 },
+      lifespan: 500,
       gravityY: 50,
+      quantity: 1,
+      frequency: 40,
     });
     this.gemParticles.stop();
 
-    // Create crab with emoji
-    this.crab = this.add.text(100, 300, '🦀', { fontSize: '40px' }).setOrigin(0.5);
+    // Create crab with emoji (responsive size)
+    const crabSize = Math.floor(40 * this.uiScale);
+    this.crab = this.add.text(
+      this.scale.width * 0.15, 
+      this.scale.height / 2, 
+      '🦀', 
+      { fontSize: `${crabSize}px` }
+    ).setOrigin(0.5);
     this.physics.add.existing(this.crab);
     // Store color for changing when shield is active
     (this.crab as any).baseEmoji = '🦀';
     (this.crab as any).normalColor = this.getColorTint(this.crabColor);
 
-    // Score display
+    // Score display (responsive)
     this.scoreText = this.add.text(16, 16, 'Score: 0', {
-      fontSize: '32px',
+      fontSize: `${Math.floor(32 * this.uiScale)}px`,
       color: '#fff',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 4,
+      strokeThickness: Math.max(2, Math.floor(4 * this.uiScale)),
     });
 
     // High score display
-    this.highScoreText = this.add.text(16, 56, `High Score: ${this.highScore}`, {
-      fontSize: '24px',
+    this.highScoreText = this.add.text(16, 16 + (40 * this.uiScale), `High Score: ${this.highScore}`, {
+      fontSize: `${Math.floor(24 * this.uiScale)}px`,
       color: '#FFD700',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     });
 
-    // Multiplier display
-    this.multiplierText = this.add.text(780, 16, 'x1', {
-      fontSize: '28px',
+    // Multiplier display (responsive position)
+    this.multiplierText = this.add.text(this.scale.width - 16, 16, 'x1', {
+      fontSize: `${Math.floor(28 * this.uiScale)}px`,
       color: '#00FF00',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     }).setOrigin(1, 0);
 
     // Shield status
-    this.shieldText = this.add.text(780, 56, '', {
-      fontSize: '24px',
+    this.shieldText = this.add.text(this.scale.width - 16, 16 + (40 * this.uiScale), '', {
+      fontSize: `${Math.floor(24 * this.uiScale)}px`,
       color: '#00BFFF',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     }).setOrigin(1, 0);
     
     // Active power-ups display
-    this.powerupText = this.add.text(780, 96, '', {
-      fontSize: '20px',
+    this.powerupText = this.add.text(this.scale.width - 16, 16 + (80 * this.uiScale), '', {
+      fontSize: `${Math.floor(20 * this.uiScale)}px`,
       color: '#FFD700',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     }).setOrigin(1, 0);
     
     // Combo display
-    this.comboText = this.add.text(400, 50, '', {
-      fontSize: '28px',
+    this.comboText = this.add.text(this.scale.width / 2, 50 * this.uiScale, '', {
+      fontSize: `${Math.floor(28 * this.uiScale)}px`,
       color: '#FF00FF',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 4,
+      strokeThickness: Math.max(2, Math.floor(4 * this.uiScale)),
     }).setOrigin(0.5);
 
     // Instructions
-    this.add.text(400, 550, 'Arrow Keys! 🐚 Shells! 🛡️ Shield! 💎 Gems! 🧲 Magnet! ⚡ Speed!', {
-      fontSize: '14px',
+    const instructionText = this.isMobile 
+      ? 'Touch & Drag Anywhere to Move! 🐚 🛡️ 💎'
+      : 'Arrow Keys! 🐚 Shells! 🛡️ Shield! 💎 Gems! 🧲 Magnet! ⚡ Speed!';
+    
+    this.add.text(this.scale.width / 2, this.scale.height - 50, instructionText, {
+      fontSize: this.isMobile ? '11px' : '14px',
       color: '#fff',
       fontStyle: 'bold',
       stroke: '#000',
@@ -207,6 +245,11 @@ export default class GameScene extends Phaser.Scene {
 
     // Keyboard controls
     this.cursors = this.input.keyboard?.createCursorKeys();
+    
+    // Touch controls for mobile
+    if (this.isMobile) {
+      this.setupTouchControls();
+    }
 
     // Spawn enemies periodically
     this.time.addEvent({
@@ -286,16 +329,21 @@ export default class GameScene extends Phaser.Scene {
   }
 
   spawnEnemy() {
-    if (this.gameOver) return;
+    if (this.gameOver || this.bossActive) return;
 
-    // Random Y position along the beach
-    const y = Phaser.Math.Between(100, 500);
+    // Random Y position along the beach (responsive)
+    const y = Phaser.Math.Between(this.scale.height * 0.2, this.scale.height * 0.8);
     
     // Choose random sea animal emoji
     const animals = ['🐙', '🦑', '🐡', '🦈', '🐠', '🐟'];
     const emoji = animals[Math.floor(Math.random() * animals.length)];
     
-    const enemy = this.add.text(850, y, emoji, { fontSize: '35px' }).setOrigin(0.5);
+    const enemy = this.add.text(
+      this.scale.width + 50, 
+      y, 
+      emoji, 
+      { fontSize: `${Math.floor(35 * this.uiScale)}px` }
+    ).setOrigin(0.5);
     this.physics.add.existing(enemy);
     
     const enemyBody = enemy.body as Phaser.Physics.Arcade.Body;
@@ -317,8 +365,13 @@ export default class GameScene extends Phaser.Scene {
   spawnCollectible() {
     if (this.gameOver) return;
 
-    const y = Phaser.Math.Between(100, 500);
-    const shell = this.add.text(850, y, '🐚', { fontSize: '25px' }).setOrigin(0.5);
+    const y = Phaser.Math.Between(this.scale.height * 0.2, this.scale.height * 0.8);
+    const shell = this.add.text(
+      this.scale.width + 50, 
+      y, 
+      '🐚', 
+      { fontSize: `${Math.floor(25 * this.uiScale)}px` }
+    ).setOrigin(0.5);
     this.physics.add.existing(shell);
     
     const shellBody = shell.body as Phaser.Physics.Arcade.Body;
@@ -340,12 +393,17 @@ export default class GameScene extends Phaser.Scene {
   spawnPowerup(type: string = 'shield') {
     if (this.gameOver) return;
 
-    const y = Phaser.Math.Between(100, 500);
+    const y = Phaser.Math.Between(this.scale.height * 0.2, this.scale.height * 0.8);
     let emoji = '🛡️';
     if (type === 'magnet') emoji = '🧲';
     if (type === 'speed') emoji = '⚡';
     
-    const powerup = this.add.text(850, y, emoji, { fontSize: '30px' }).setOrigin(0.5);
+    const powerup = this.add.text(
+      this.scale.width + 50, 
+      y, 
+      emoji, 
+      { fontSize: `${Math.floor(30 * this.uiScale)}px` }
+    ).setOrigin(0.5);
     this.physics.add.existing(powerup);
     (powerup as any).powerupType = type; // Store type
     
@@ -367,8 +425,13 @@ export default class GameScene extends Phaser.Scene {
   spawnGem() {
     if (this.gameOver) return;
 
-    const y = Phaser.Math.Between(100, 500);
-    const gem = this.add.text(850, y, '💎', { fontSize: '30px' }).setOrigin(0.5);
+    const y = Phaser.Math.Between(this.scale.height * 0.2, this.scale.height * 0.8);
+    const gem = this.add.text(
+      this.scale.width + 50, 
+      y, 
+      '💎', 
+      { fontSize: `${Math.floor(30 * this.uiScale)}px` }
+    ).setOrigin(0.5);
     this.physics.add.existing(gem);
     
     const gemBody = gem.body as Phaser.Physics.Arcade.Body;
@@ -393,6 +456,81 @@ export default class GameScene extends Phaser.Scene {
     return `#${color.toString(16).padStart(6, '0')}`;
   }
 
+  setupTouchControls() {
+    // Virtual joystick in bottom-left corner (responsive)
+    const joystickX = 80;
+    const joystickY = this.scale.height - 80;
+    
+    this.joystickBase = this.add.circle(joystickX, joystickY, 50, 0xFFFFFF, 0.5);
+    this.joystickBase.setStrokeStyle(3, 0xFFD700);
+    this.joystickThumb = this.add.circle(joystickX, joystickY, 25, 0xFFD700, 0.9);
+    
+    // Make them stay on top
+    this.joystickBase.setDepth(1000);
+    this.joystickThumb.setDepth(1001);
+    this.joystickBase.setScrollFactor(0);
+    this.joystickThumb.setScrollFactor(0);
+    
+    // Store joystick position for reference
+    const joystickBaseX = joystickX;
+    const joystickBaseY = joystickY;
+    
+    // Touch input - use 'this' context properly
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this.gameOver) {
+        // Allow touching anywhere on screen to control
+        this.isTouching = true;
+      }
+    });
+    
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (this.isTouching && !this.gameOver && this.crab) {
+        // Move toward touch position
+        const angle = Phaser.Math.Angle.Between(
+          this.crab.x, this.crab.y,
+          pointer.x, pointer.y
+        );
+        const distance = Phaser.Math.Distance.Between(
+          this.crab.x, this.crab.y,
+          pointer.x, pointer.y
+        );
+        
+        // Only move if touch is not too close to crab
+        if (distance > 30) {
+          this.touchX = Math.cos(angle);
+          this.touchY = Math.sin(angle);
+          
+          // Update joystick visual
+          const joystickAngle = Phaser.Math.Angle.Between(
+            joystickBaseX, joystickBaseY,
+            pointer.x, pointer.y
+          );
+          const joystickDist = Math.min(distance / 10, 45);
+          
+          if (this.joystickThumb) {
+            this.joystickThumb.x = joystickBaseX + Math.cos(joystickAngle) * joystickDist;
+            this.joystickThumb.y = joystickBaseY + Math.sin(joystickAngle) * joystickDist;
+          }
+        } else {
+          this.touchX = 0;
+          this.touchY = 0;
+        }
+      }
+    });
+    
+    this.input.on('pointerup', () => {
+      this.isTouching = false;
+      this.touchX = 0;
+      this.touchY = 0;
+      
+      // Reset joystick thumb
+      if (this.joystickThumb) {
+        this.joystickThumb.x = joystickBaseX;
+        this.joystickThumb.y = joystickBaseY;
+      }
+    });
+  }
+
   spawnBoss(type: 'mini' | 'final') {
     if (this.bossActive) return;
     
@@ -403,46 +541,63 @@ export default class GameScene extends Phaser.Scene {
     this.enemies.forEach(e => e.destroy());
     this.enemies = [];
     
+    const centerX = this.scale.width / 2;
+    const bossX = this.scale.width * 0.75;
+    const bossY = this.scale.height / 2;
+    
     // Set boss stats
     if (type === 'mini') {
       this.bossMaxHealth = 10;
       this.bossHealth = 10;
       const bossEmojis = ['🐳', '🦈', '🐋'];
       const emoji = bossEmojis[Math.floor(Math.random() * bossEmojis.length)];
-      this.boss = this.add.text(700, 300, emoji, { fontSize: '80px' }).setOrigin(0.5);
-      this.showMessage('⚠️ MINI-BOSS APPEARS! ⚠️', 0xFF0000);
-      this.bossNameText = this.add.text(400, 150, 'OCEAN GUARDIAN', {
-        fontSize: '36px',
+      this.boss = this.add.text(bossX, bossY, emoji, { 
+        fontSize: `${Math.floor(80 * this.uiScale)}px` 
+      }).setOrigin(0.5);
+      this.showMessage('⚠️ MINI-BOSS! ⚠️', 0xFF0000);
+      this.bossNameText = this.add.text(centerX, this.scale.height * 0.2, 'OCEAN GUARDIAN', {
+        fontSize: `${Math.floor(36 * this.uiScale)}px`,
         color: '#FF0000',
         fontStyle: 'bold',
         stroke: '#000',
-        strokeThickness: 6,
+        strokeThickness: Math.max(3, Math.floor(6 * this.uiScale)),
       }).setOrigin(0.5);
     } else {
       this.bossMaxHealth = 25;
       this.bossHealth = 25;
-      this.boss = this.add.text(700, 300, '🐙', { fontSize: '120px' }).setOrigin(0.5);
+      this.boss = this.add.text(bossX, bossY, '🐙', { 
+        fontSize: `${Math.floor(120 * this.uiScale)}px` 
+      }).setOrigin(0.5);
       this.showMessage('💀 FINAL BOSS! 💀', 0xFF0000);
-      this.bossNameText = this.add.text(400, 150, 'KRAKEN KING', {
-        fontSize: '48px',
+      this.bossNameText = this.add.text(centerX, this.scale.height * 0.2, 'KRAKEN KING', {
+        fontSize: `${Math.floor(48 * this.uiScale)}px`,
         color: '#8B00FF',
         fontStyle: 'bold',
         stroke: '#000',
-        strokeThickness: 8,
+        strokeThickness: Math.max(4, Math.floor(8 * this.uiScale)),
       }).setOrigin(0.5);
     }
     
     this.physics.add.existing(this.boss);
     
-    // Boss health bar
-    this.bossHealthBarBg = this.add.rectangle(400, 200, 400, 30, 0x000000, 0.7);
-    this.bossHealthBar = this.add.rectangle(200, 200, 400, 30, 0xFF0000);
+    // Boss health bar (responsive)
+    const healthBarWidth = Math.min(400 * this.uiScale, this.scale.width - 40);
+    const healthBarY = this.scale.height * 0.3;
+    
+    this.bossHealthBarBg = this.add.rectangle(centerX, healthBarY, healthBarWidth, 30 * this.uiScale, 0x000000, 0.7);
+    this.bossHealthBar = this.add.rectangle(
+      centerX - healthBarWidth / 2, 
+      healthBarY, 
+      healthBarWidth, 
+      30 * this.uiScale, 
+      0xFF0000
+    );
     this.bossHealthBar.setOrigin(0, 0.5);
     
-    // Boss movement pattern
+    // Boss movement pattern (responsive)
     this.tweens.add({
       targets: this.boss,
-      y: 250,
+      y: bossY - 50,
       duration: 2000,
       yoyo: true,
       repeat: -1,
@@ -547,10 +702,10 @@ export default class GameScene extends Phaser.Scene {
     this.bossesDefeated++;
     this.score += this.bossType === 'final' ? 1000 : 500;
     
-    // Epic explosion
-    this.gemParticles?.emitParticleAt(this.boss.x, this.boss.y, 50);
-    this.cameras.main.shake(500, 0.01);
-    this.cameras.main.flash(500, 255, 215, 0);
+    // Epic explosion (optimized)
+    this.gemParticles?.emitParticleAt(this.boss.x, this.boss.y, 20);
+    this.cameras.main.shake(300, 0.008);
+    this.cameras.main.flash(300, 255, 215, 0);
     
     this.showMessage(
       this.bossType === 'final' ? '🎉 BOSS DEFEATED! +1000! 🎉' : '✨ BOSS DEFEATED! +500! ✨',
@@ -579,21 +734,33 @@ export default class GameScene extends Phaser.Scene {
       }
     } catch (e) {
       // Silently fail if sound doesn't load
-      console.log('Sound not available:', type);
     }
   }
 
   showAchievement(text: string) {
-    const achievement = this.add.rectangle(400, 100, 400, 60, 0x000000, 0.8);
-    const achievementText = this.add.text(400, 100, `🏆 ${text}`, {
-      fontSize: '24px',
-      color: '#FFD700',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
+    const boxWidth = Math.min(400 * this.uiScale, this.scale.width - 40);
+    const achievement = this.add.rectangle(
+      this.scale.width / 2, 
+      100 * this.uiScale, 
+      boxWidth, 
+      60 * this.uiScale, 
+      0x000000, 
+      0.8
+    );
+    const achievementText = this.add.text(
+      this.scale.width / 2, 
+      100 * this.uiScale, 
+      `🏆 ${text}`, 
+      {
+        fontSize: `${Math.floor(24 * this.uiScale)}px`,
+        color: '#FFD700',
+        fontStyle: 'bold',
+      }
+    ).setOrigin(0.5);
 
     this.tweens.add({
       targets: [achievement, achievementText],
-      y: 150,
+      y: 150 * this.uiScale,
       alpha: 0,
       duration: 3000,
       ease: 'Power2',
@@ -648,18 +815,23 @@ export default class GameScene extends Phaser.Scene {
   }
 
   showMessage(text: string, color: number) {
-    const message = this.add.text(400, 300, text, {
-      fontSize: '48px',
-      color: `#${color.toString(16).padStart(6, '0')}`,
-      fontStyle: 'bold',
-      stroke: '#000',
-      strokeThickness: 5,
-    }).setOrigin(0.5);
+    const message = this.add.text(
+      this.scale.width / 2, 
+      this.scale.height / 2, 
+      text, 
+      {
+        fontSize: `${Math.floor(48 * this.uiScale)}px`,
+        color: `#${color.toString(16).padStart(6, '0')}`,
+        fontStyle: 'bold',
+        stroke: '#000',
+        strokeThickness: Math.max(2, Math.floor(5 * this.uiScale)),
+      }
+    ).setOrigin(0.5);
 
     this.tweens.add({
       targets: message,
       alpha: 0,
-      y: 250,
+      y: this.scale.height / 2 - 50,
       duration: 1000,
       ease: 'Power2',
       onComplete: () => message.destroy(),
@@ -682,22 +854,30 @@ export default class GameScene extends Phaser.Scene {
     // Handle crab movement with speed boost
     const moveSpeed = this.hasSpeedBoost ? this.crabSpeed * 1.8 : this.crabSpeed;
     
-    if (this.cursors?.left.isDown) {
-      crabBody.setVelocityX(-moveSpeed);
-    } else if (this.cursors?.right.isDown) {
-      crabBody.setVelocityX(moveSpeed);
+    // Touch controls (mobile)
+    if (this.isMobile && this.isTouching) {
+      crabBody.setVelocityX(this.touchX * moveSpeed);
+      crabBody.setVelocityY(this.touchY * moveSpeed);
+    }
+    // Keyboard controls (desktop)
+    else if (!this.isMobile) {
+      if (this.cursors?.left.isDown) {
+        crabBody.setVelocityX(-moveSpeed);
+      } else if (this.cursors?.right.isDown) {
+        crabBody.setVelocityX(moveSpeed);
+      }
+
+      if (this.cursors?.up.isDown) {
+        crabBody.setVelocityY(-moveSpeed);
+      } else if (this.cursors?.down.isDown) {
+        crabBody.setVelocityY(moveSpeed);
+      }
     }
 
-    if (this.cursors?.up.isDown) {
-      crabBody.setVelocityY(-moveSpeed);
-    } else if (this.cursors?.down.isDown) {
-      crabBody.setVelocityY(moveSpeed);
-    }
-
-    // Keep crab on screen
+    // Keep crab on screen (responsive bounds)
     if (this.crab) {
-      this.crab.x = Phaser.Math.Clamp(this.crab.x, 20, 780);
-      this.crab.y = Phaser.Math.Clamp(this.crab.y, 20, 580);
+      this.crab.x = Phaser.Math.Clamp(this.crab.x, 20, this.scale.width - 20);
+      this.crab.y = Phaser.Math.Clamp(this.crab.y, 20, this.scale.height - 20);
       
       // Update crab appearance based on shield
       if (this.hasShield) {
@@ -853,10 +1033,10 @@ export default class GameScene extends Phaser.Scene {
         const totalPoints = (25 + comboBonus) * this.comboMultiplier;
         this.score += totalPoints;
         
-        this.particles?.emitParticleAt(shell.x, shell.y, 10);
+        this.particles?.emitParticleAt(shell.x, shell.y, 5);
         this.showMessage(`+${Math.floor(totalPoints)}!`, 0xFFD700);
         this.playSound('collect');
-        this.cameras.main.shake(100, 0.002);
+        this.cameras.main.shake(80, 0.001);
         localStorage.setItem('crabTotalShells', this.totalShellsEver.toString());
         this.checkAchievements();
         shell.destroy();
@@ -893,9 +1073,9 @@ export default class GameScene extends Phaser.Scene {
           this.showMessage('⚡ Speed Boost!', 0xFFFF00);
         }
         
-        this.particles?.emitParticleAt(powerup.x, powerup.y, 15);
+        this.particles?.emitParticleAt(powerup.x, powerup.y, 8);
         this.playSound('powerup');
-        this.cameras.main.shake(150, 0.003);
+        this.cameras.main.shake(100, 0.002);
         powerup.destroy();
         return false;
       }
@@ -930,9 +1110,9 @@ export default class GameScene extends Phaser.Scene {
         }
         
         this.score += gemValue * this.comboMultiplier;
-        this.gemParticles?.emitParticleAt(gem.x, gem.y, 20);
+        this.gemParticles?.emitParticleAt(gem.x, gem.y, 10);
         this.playSound('gem');
-        this.cameras.main.shake(200, 0.005);
+        this.cameras.main.shake(150, 0.003);
         
         // Reset combo (gems break shell combos - strategic choice!)
         this.lastCollectedType = 'gem';
@@ -1024,23 +1204,28 @@ export default class GameScene extends Phaser.Scene {
       body.setVelocity(0);
     });
 
-    // Game over text
-    const gameOverText = this.add.text(400, 180, 'Game Over!', {
-      fontSize: '64px',
+    // Game over text (responsive)
+    const centerX = this.scale.width / 2;
+    let yPos = this.scale.height * 0.25;
+    
+    const gameOverText = this.add.text(centerX, yPos, 'Game Over!', {
+      fontSize: `${Math.floor(64 * this.uiScale)}px`,
       color: '#ff0000',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 6,
+      strokeThickness: Math.max(3, Math.floor(6 * this.uiScale)),
     }).setOrigin(0.5);
+
+    yPos += 70 * this.uiScale;
 
     // New high score message
     if (isNewHighScore) {
-      const newHighScoreText = this.add.text(400, 250, '🎉 NEW HIGH SCORE! 🎉', {
-        fontSize: '28px',
+      const newHighScoreText = this.add.text(centerX, yPos, '🎉 NEW HIGH SCORE! 🎉', {
+        fontSize: `${Math.floor(28 * this.uiScale)}px`,
         color: '#FFD700',
         fontStyle: 'bold',
         stroke: '#000',
-        strokeThickness: 4,
+        strokeThickness: Math.max(2, Math.floor(4 * this.uiScale)),
       }).setOrigin(0.5);
       
       this.tweens.add({
@@ -1050,52 +1235,62 @@ export default class GameScene extends Phaser.Scene {
         yoyo: true,
         repeat: -1,
       });
+      
+      yPos += 40 * this.uiScale;
     }
 
-    const finalScoreText = this.add.text(400, 300, `Final Score: ${finalScore}`, {
-      fontSize: '32px',
+    const finalScoreText = this.add.text(centerX, yPos, `Final Score: ${finalScore}`, {
+      fontSize: `${Math.floor(32 * this.uiScale)}px`,
       color: '#fff',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 4,
+      strokeThickness: Math.max(2, Math.floor(4 * this.uiScale)),
     }).setOrigin(0.5);
 
-    const shellsText = this.add.text(400, 330, `🐚 Shells: ${this.shellsCollected}  💎 Gems: ${this.gemsCollected}`, {
-      fontSize: '20px',
+    yPos += 40 * this.uiScale;
+
+    const shellsText = this.add.text(centerX, yPos, `🐚 ${this.shellsCollected}  💎 ${this.gemsCollected}`, {
+      fontSize: `${Math.floor(20 * this.uiScale)}px`,
       color: '#FFD700',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     }).setOrigin(0.5);
 
-    const streakText = this.add.text(400, 360, `🔥 Best Streak: ${this.currentStreak}`, {
-      fontSize: '20px',
+    yPos += 35 * this.uiScale;
+
+    const streakText = this.add.text(centerX, yPos, `🔥 Streak: ${this.currentStreak}`, {
+      fontSize: `${Math.floor(20 * this.uiScale)}px`,
       color: '#FF6347',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     }).setOrigin(0.5);
 
-    const levelText = this.add.text(400, 390, `Level: ${this.difficultyLevel} | Bosses: ${this.bossesDefeated} | Shells Ever: ${this.totalShellsEver}`, {
-      fontSize: '16px',
+    yPos += 35 * this.uiScale;
+
+    const levelText = this.add.text(centerX, yPos, `Lv${this.difficultyLevel} | 👾${this.bossesDefeated}`, {
+      fontSize: `${Math.floor(18 * this.uiScale)}px`,
       color: '#00FF00',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     }).setOrigin(0.5);
 
+    yPos += 40 * this.uiScale;
+
     // Motivational message
-    let message = 'Click to Play Again!';
+    let message = this.isMobile ? 'Tap to Play Again!' : 'Click to Play Again!';
     if (!isNewHighScore && this.highScore - finalScore <= 50) {
-      message = `Only ${this.highScore - finalScore} points from high score! Try again!`;
+      message = `Only ${this.highScore - finalScore} away! Try again!`;
     }
 
-    const restartText = this.add.text(400, 420, message, {
-      fontSize: '22px',
+    const restartText = this.add.text(centerX, yPos, message, {
+      fontSize: `${Math.floor(22 * this.uiScale)}px`,
       color: '#fff',
       fontStyle: 'bold',
       stroke: '#000',
-      strokeThickness: 3,
+      strokeThickness: Math.max(2, Math.floor(3 * this.uiScale)),
     }).setOrigin(0.5);
 
     // Pulsing animation on restart text

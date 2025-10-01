@@ -17,5 +17,32 @@ canvas {
   margin: 0 auto;
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-width: 100%;
+  max-height: calc(100vh - 280px); /* Ensure it fits viewport */
+  height: auto !important;
+  width: auto !important;
+}
+
+#game-container {
+  touch-action: none; /* Prevent scrolling on touch */
+  user-select: none;
+  -webkit-user-select: none;
+  max-height: calc(100vh - 280px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Prevent zoom on mobile */
+@media (max-width: 768px) {
+  body {
+    touch-action: pan-x pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  input, textarea, button {
+    touch-action: manipulation;
+  }
 }
 

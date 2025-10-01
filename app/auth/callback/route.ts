@@ -5,18 +5,10 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
 
-  console.log('Auth callback received, code:', code ? 'present' : 'missing');
-
   if (code) {
     try {
       // Exchange code for session
       const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
-      
-      console.log('Session exchange result:', { 
-        hasSession: !!session, 
-        hasUser: !!session?.user,
-        error: error?.message 
-      });
       
       if (error) throw error;
       
@@ -29,12 +21,6 @@ export async function GET(request: Request) {
         const avatarUrl = user.user_metadata?.avatar_url || 
                          user.user_metadata?.picture || 
                          '';
-        
-        console.log('User metadata:', { 
-          username, 
-          avatarUrl, 
-          fullMetadata: user.user_metadata 
-        });
         
         // Check if user exists in our database
         const { data: existingUser } = await supabase
