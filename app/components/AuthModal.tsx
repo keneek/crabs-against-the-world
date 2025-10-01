@@ -12,7 +12,8 @@ const getRedirectUrl = () => {
   if (typeof window !== 'undefined') {
     return `${window.location.origin}/auth/callback`;
   }
-  return 'http://localhost:3000/auth/callback';
+  // Fallback should never be used, but keeping for safety
+  return `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`;
 };
 
 export default function AuthModal({ onClose, onSuccess }: AuthModalProps) {
