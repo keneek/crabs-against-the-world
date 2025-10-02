@@ -26,6 +26,9 @@ export default class GameScene extends Phaser.Scene {
   private magnetDuration: number = 0;
   private hasSpeedBoost: boolean = false;
   private speedBoostDuration: number = 0;
+  private hasSword: boolean = false;
+  private swordDuration: number = 0;
+  private swordCooldown: number = 0;
   private magnetRange: number = 100;
   
   // Combo system
@@ -89,6 +92,8 @@ export default class GameScene extends Phaser.Scene {
     this.load.audio('yoink', '/sounds/yoink.m4a');
     this.load.audio('thankyou', '/sounds/thank_you.wav');
     this.load.audio('powerup', '/sounds/power_up.wav');
+    this.load.audio('yay', '/sounds/yay.wav');
+    this.load.audio('imsorry', '/sounds/im_sorry.wav');
   }
 
   create() {
@@ -230,18 +235,32 @@ export default class GameScene extends Phaser.Scene {
       strokeThickness: Math.max(2, Math.floor(4 * this.uiScale)),
     }).setOrigin(0.5);
 
-    // Instructions
-    const instructionText = this.isMobile 
-      ? 'Touch & Drag Anywhere to Move! 🐚 🛡️ 💎'
-      : 'Arrow Keys! 🐚 Shells! 🛡️ Shield! 💎 Gems! 🧲 Magnet! ⚡ Speed!';
+    // Instructions with better clarity
+    let instructionText = '';
+    if (this.isMobile) {
+      instructionText = 'Drag to Move (crab follows above finger) 🐚 💎';
+    } else {
+      instructionText = 'Arrow Keys! 🐚 Shells! 💎 Gems! ⚔️ Sword!';
+    }
     
     this.add.text(this.scale.width / 2, this.scale.height - 50, instructionText, {
-      fontSize: this.isMobile ? '11px' : '14px',
+      fontSize: this.isMobile ? '10px' : '14px',
       color: '#fff',
       fontStyle: 'bold',
       stroke: '#000',
       strokeThickness: 3,
     }).setOrigin(0.5);
+    
+    // Add help reminder on mobile
+    if (this.isMobile) {
+      this.add.text(this.scale.width / 2, this.scale.height - 30, 'Tap ❓ Help for full guide', {
+        fontSize: '9px',
+        color: '#FFD700',
+        fontStyle: 'bold',
+        stroke: '#000',
+        strokeThickness: 2,
+      }).setOrigin(0.5);
+    }
 
     // Keyboard controls
     this.cursors = this.input.keyboard?.createCursorKeys();
@@ -272,12 +291,14 @@ export default class GameScene extends Phaser.Scene {
       delay: 7000,
       callback: () => {
         const rand = Math.random();
-        if (rand < 0.4) {
+        if (rand < 0.3) {
           this.spawnPowerup('shield');
-        } else if (rand < 0.7) {
+        } else if (rand < 0.5) {
           this.spawnPowerup('magnet');
-        } else {
+        } else if (rand < 0.7) {
           this.spawnPowerup('speed');
+        } else {
+          this.spawnPowerup('sword');
         }
       },
       callbackScope: this,
@@ -397,6 +418,7 @@ export default class GameScene extends Phaser.Scene {
     let emoji = '🛡️';
     if (type === 'magnet') emoji = '🧲';
     if (type === 'speed') emoji = '⚡';
+    if (type === 'sword') emoji = '⚔️';
     
     const powerup = this.add.text(
       this.scale.width + 50, 
@@ -485,22 +507,27 @@ export default class GameScene extends Phaser.Scene {
     
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (this.isTouching && !this.gameOver && this.crab) {
-        // Move toward touch position
+        // Offset touch point ABOVE finger so crab isn't hidden
+        const touchOffsetY = -60; // Move target 60px above finger
+        const targetX = pointer.x;
+        const targetY = pointer.y + touchOffsetY;
+        
+        // Move toward offset touch position
         const angle = Phaser.Math.Angle.Between(
           this.crab.x, this.crab.y,
-          pointer.x, pointer.y
+          targetX, targetY
         );
         const distance = Phaser.Math.Distance.Between(
           this.crab.x, this.crab.y,
-          pointer.x, pointer.y
+          targetX, targetY
         );
         
         // Only move if touch is not too close to crab
-        if (distance > 30) {
+        if (distance > 20) {
           this.touchX = Math.cos(angle);
           this.touchY = Math.sin(angle);
           
-          // Update joystick visual
+          // Update joystick visual to show actual touch (not offset)
           const joystickAngle = Phaser.Math.Angle.Between(
             joystickBaseX, joystickBaseY,
             pointer.x, pointer.y
@@ -537,6 +564,12 @@ export default class GameScene extends Phaser.Scene {
     this.bossActive = true;
     this.bossType = type;
     
+    // Extend sword duration if player has it (boss fight bonus!)
+    if (this.hasSword && this.swordDuration > 0) {
+      this.swordDuration = 15000; // 15 seconds for boss fight
+      this.showMessage('⚔️ Sword Extended!', 0xFFFF00);
+    }
+    
     // Clear regular enemies
     this.enemies.forEach(e => e.destroy());
     this.enemies = [];
@@ -554,7 +587,17 @@ export default class GameScene extends Phaser.Scene {
       this.boss = this.add.text(bossX, bossY, emoji, { 
         fontSize: `${Math.floor(80 * this.uiScale)}px` 
       }).setOrigin(0.5);
-      this.showMessage('⚠️ MINI-BOSS! ⚠️', 0xFF0000);
+      this.showMessage('⚠️ MINI-BOSS! Hit with 🐚!', 0xFF0000);
+      
+      // Show boss tip
+      setTimeout(() => {
+        if (this.hasSword) {
+          this.showMessage('⚔️ You have SWORD! Touch shots to PARRY!', 0xFFFF00);
+        } else {
+          this.showMessage('Get ⚔️ SWORD or 🛡️ SHIELD!', 0xFF0000);
+        }
+      }, 2000);
+      
       this.bossNameText = this.add.text(centerX, this.scale.height * 0.2, 'OCEAN GUARDIAN', {
         fontSize: `${Math.floor(36 * this.uiScale)}px`,
         color: '#FF0000',
@@ -568,7 +611,17 @@ export default class GameScene extends Phaser.Scene {
       this.boss = this.add.text(bossX, bossY, '🐙', { 
         fontSize: `${Math.floor(120 * this.uiScale)}px` 
       }).setOrigin(0.5);
-      this.showMessage('💀 FINAL BOSS! 💀', 0xFF0000);
+      this.showMessage('💀 KRAKEN KING! Hit with 🐚!', 0xFF0000);
+      
+      // Show boss tip
+      setTimeout(() => {
+        if (this.hasSword) {
+          this.showMessage('⚔️ SWORD ACTIVE! Touch 💥 to PARRY!', 0xFFFF00);
+        } else {
+          this.showMessage('⚠️ Get ⚔️ SWORD or 🛡️ SHIELD fast!', 0xFF0000);
+        }
+      }, 2500);
+      
       this.bossNameText = this.add.text(centerX, this.scale.height * 0.2, 'KRAKEN KING', {
         fontSize: `${Math.floor(48 * this.uiScale)}px`,
         color: '#8B00FF',
@@ -641,9 +694,11 @@ export default class GameScene extends Phaser.Scene {
       return true;
     });
     
-    // Boss projectiles hit player
+    // Boss projectiles - parry or get hit
     this.bossProjectiles = this.bossProjectiles.filter(proj => {
-      if (proj.x < -50 || proj.x > 850) {
+      const projBody = proj.body as Phaser.Physics.Arcade.Body;
+      
+      if (proj.x < -50 || proj.x > this.scale.width + 50) {
         proj.destroy();
         return false;
       }
@@ -652,13 +707,53 @@ export default class GameScene extends Phaser.Scene {
         this.crab.getBounds(),
         proj.getBounds()
       )) {
-        if (!this.hasShield) {
+        if (this.hasSword && this.swordCooldown <= 0) {
+          // PARRY! Reflect projectile back at boss
+          projBody.setVelocityX(Math.abs(projBody.velocity.x!));
+          (proj as any).reflected = true;
+          proj.setText('💥⚔️');
+          proj.setStyle({ fontSize: `${Math.floor(40 * this.uiScale)}px` });
+          this.swordCooldown = 500; // Half second cooldown
+          this.showMessage('⚔️ PARRY! ⚔️', 0xFFFF00);
+          this.playSound('powerup');
+          this.cameras.main.shake(150, 0.005);
+          this.cameras.main.flash(100, 255, 255, 0, true);
+          return true; // Keep projectile alive, now flying toward boss
+        } else if (this.hasShield) {
+          // Shield blocks
+          proj.destroy();
+          this.showMessage('🛡️ Blocked!', 0x00BFFF);
+          return false;
+        } else {
+          // No sword or shield - you die!
+          if (!this.hasSword) {
+            this.showMessage('Need ⚔️ to PARRY!', 0xFF0000);
+          }
           this.currentStreak = 0;
           this.endGame();
+          proj.destroy();
+          return false;
         }
+      }
+      
+      // Check if reflected projectile hits boss
+      if ((proj as any).reflected && this.boss && Phaser.Geom.Intersects.RectangleToRectangle(
+        this.boss.getBounds(),
+        proj.getBounds()
+      )) {
+        // Boss hit by parried shot! Double damage!
+        this.bossHealth -= 2;
+        this.cameras.main.shake(250, 0.007);
+        this.particles?.emitParticleAt(proj.x, proj.y, 15);
+        this.showMessage('CRITICAL HIT! 💥', 0xFF0000);
         proj.destroy();
+        
+        if (this.bossHealth <= 0) {
+          this.defeatBoss();
+        }
         return false;
       }
+      
       return true;
     });
   }
@@ -707,6 +802,9 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.shake(300, 0.008);
     this.cameras.main.flash(300, 255, 215, 0);
     
+    // Victory sound!
+    this.playSound('bossvictory');
+    
     this.showMessage(
       this.bossType === 'final' ? '🎉 BOSS DEFEATED! +1000! 🎉' : '✨ BOSS DEFEATED! +500! ✨',
       this.bossType === 'final' ? 0xFFD700 : 0x00FF00
@@ -731,6 +829,10 @@ export default class GameScene extends Phaser.Scene {
         this.sound.play('powerup', { volume: 0.6 });
       } else if (type === 'gem') {
         this.sound.play('thankyou', { volume: 0.6 });
+      } else if (type === 'bossvictory') {
+        this.sound.play('yay', { volume: 0.7 });
+      } else if (type === 'gameover') {
+        this.sound.play('imsorry', { volume: 0.6 });
       }
     } catch (e) {
       // Silently fail if sound doesn't load
@@ -879,10 +981,13 @@ export default class GameScene extends Phaser.Scene {
       this.crab.x = Phaser.Math.Clamp(this.crab.x, 20, this.scale.width - 20);
       this.crab.y = Phaser.Math.Clamp(this.crab.y, 20, this.scale.height - 20);
       
-      // Update crab appearance based on shield
+      // Update crab appearance based on active power-up
       if (this.hasShield) {
         this.crab.setTint(0x00BFFF);
         this.crab.setAlpha(0.7 + Math.sin(Date.now() / 100) * 0.3);
+      } else if (this.hasSword) {
+        this.crab.setTint(0xFF0000);
+        this.crab.setAlpha(0.9);
       } else {
         this.crab.clearTint();
         this.crab.setAlpha(1);
@@ -914,10 +1019,22 @@ export default class GameScene extends Phaser.Scene {
       }
     }
     
+    if (this.hasSword) {
+      // Don't let sword expire during boss fights (pause the timer)
+      if (!this.bossActive) {
+        this.swordDuration -= 16;
+      }
+      this.swordCooldown = Math.max(0, this.swordCooldown - 16);
+      if (this.swordDuration <= 0) {
+        this.hasSword = false;
+      }
+    }
+    
     // Update power-up display
     let powerupDisplay = [];
     if (this.hasMagnet) powerupDisplay.push(`🧲 ${Math.ceil(this.magnetDuration / 1000)}s`);
     if (this.hasSpeedBoost) powerupDisplay.push(`⚡ ${Math.ceil(this.speedBoostDuration / 1000)}s`);
+    if (this.hasSword) powerupDisplay.push(`⚔️ ${Math.ceil(this.swordDuration / 1000)}s`);
     this.powerupText?.setText(powerupDisplay.join(' '));
     
     // Update combo timer
@@ -959,14 +1076,43 @@ export default class GameScene extends Phaser.Scene {
         this.crab.getBounds(),
         enemy.getBounds()
       )) {
-        if (this.hasShield) {
+        if (this.hasSword) {
+          // SWORD KNOCKBACK! Launch enemy off screen!
+          const enemyBody = enemy.body as Phaser.Physics.Arcade.Body;
+          const angle = Phaser.Math.Angle.Between(this.crab.x, this.crab.y, enemy.x, enemy.y);
+          enemyBody.setVelocity(
+            Math.cos(angle) * 800,
+            Math.sin(angle) * 800 - 200 // Add upward arc
+          );
+          
+          // Bonus points!
+          const bonusPoints = 75 * this.comboMultiplier;
+          this.score += bonusPoints;
+          this.showMessage(`⚔️ KNOCKBACK! +${Math.floor(bonusPoints)}!`, 0xFF0000);
+          this.particles?.emitParticleAt(enemy.x, enemy.y, 10);
+          this.playSound('powerup');
+          this.cameras.main.shake(150, 0.004);
+          
+          // Spin enemy as it flies off
+          this.tweens.add({
+            targets: enemy,
+            angle: 720,
+            duration: 1000,
+            ease: 'Power2',
+          });
+          
+          // Destroy after flying off screen
+          setTimeout(() => enemy.destroy(), 1500);
+          return true; // Keep in array temporarily
+        } else if (this.hasShield) {
           // Shield protects! Destroy enemy
           enemy.destroy();
           this.score += 50 * this.comboMultiplier;
           this.showMessage('+50!', 0x00FF00);
           return false;
         } else {
-          this.currentStreak = 0; // Reset streak on hit
+          // No protection - game over!
+          this.currentStreak = 0;
           this.endGame();
         }
       }
@@ -1071,6 +1217,21 @@ export default class GameScene extends Phaser.Scene {
           this.hasSpeedBoost = true;
           this.speedBoostDuration = 6000;
           this.showMessage('⚡ Speed Boost!', 0xFFFF00);
+        } else if (type === 'sword') {
+          this.hasSword = true;
+          // Give extra time during boss fights
+          this.swordDuration = this.bossActive ? 15000 : 8000;
+          if (this.bossActive) {
+            this.showMessage('⚔️ PARRY! Touch shots to reflect!', 0xFF0000);
+          } else {
+            const nextBossLevel = Math.ceil(this.difficultyLevel / 5) * 5;
+            const levelsUntilBoss = nextBossLevel - this.difficultyLevel;
+            if (levelsUntilBoss <= 1) {
+              this.showMessage('⚔️ PARRY & KNOCKBACK!', 0xFF0000);
+            } else {
+              this.showMessage('⚔️ KNOCKBACK enemies!', 0xFF0000);
+            }
+          }
         }
         
         this.particles?.emitParticleAt(powerup.x, powerup.y, 8);
@@ -1135,6 +1296,9 @@ export default class GameScene extends Phaser.Scene {
 
   async endGame() {
     this.gameOver = true;
+    
+    // Sad sound :(
+    this.playSound('gameover');
     
     // Camera shake on death
     this.cameras.main.shake(500, 0.01);
@@ -1302,6 +1466,20 @@ export default class GameScene extends Phaser.Scene {
       repeat: -1,
     });
 
+    // Emit game over event for React to potentially show save score modal
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('gameOver', {
+        detail: {
+          score: finalScore,
+          levelReached: this.difficultyLevel,
+          shellsCollected: this.shellsCollected,
+          bossesDefeated: this.bossesDefeated,
+          isLoggedIn: !!(this.username && this.userId),
+        },
+      });
+      window.dispatchEvent(event);
+    }
+
     // Restart on click
     this.input.once('pointerdown', () => {
       this.scene.restart();
@@ -1322,6 +1500,9 @@ export default class GameScene extends Phaser.Scene {
     this.magnetDuration = 0;
     this.hasSpeedBoost = false;
     this.speedBoostDuration = 0;
+    this.hasSword = false;
+    this.swordDuration = 0;
+    this.swordCooldown = 0;
     this.comboCount = 0;
     this.comboTimer = 0;
     this.lastCollectedType = '';

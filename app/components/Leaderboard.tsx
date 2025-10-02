@@ -15,6 +15,13 @@ export default function Leaderboard({ currentScore, onClose }: LeaderboardProps)
 
   useEffect(() => {
     fetchScores();
+    
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(() => {
+      fetchScores();
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, [timeFilter]);
 
   const fetchScores = async () => {
@@ -45,8 +52,14 @@ export default function Leaderboard({ currentScore, onClose }: LeaderboardProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-b from-blue-500 to-blue-700 p-6 rounded-lg shadow-2xl max-w-2xl w-full border-4 border-yellow-400 max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-gradient-to-b from-blue-500 to-blue-700 p-4 sm:p-6 rounded-lg shadow-2xl max-w-2xl w-full border-4 border-yellow-400 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2 className="text-4xl font-bold text-white mb-4 text-center">
           🏆 Global Leaderboard 🏆
         </h2>
@@ -128,12 +141,20 @@ export default function Leaderboard({ currentScore, onClose }: LeaderboardProps)
           </div>
         )}
 
-        <button
-          onClick={onClose}
-          className="mt-6 w-full bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold py-3 px-4 rounded-lg text-lg transition-colors"
-        >
-          Close
-        </button>
+        <div className="mt-6 flex gap-2">
+          <button
+            onClick={fetchScores}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors"
+          >
+            🔄 Refresh
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold py-3 px-4 rounded-lg text-lg transition-colors"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

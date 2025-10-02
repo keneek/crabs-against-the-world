@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import AuthModal from './components/AuthModal';
 import Leaderboard from './components/Leaderboard';
+import SaveScoreModal from './components/SaveScoreModal';
+import Tutorial from './components/Tutorial';
 import { supabase } from '@/lib/supabase';
 
 const Game = dynamic(() => import('./components/Game'), {
@@ -13,10 +15,43 @@ const Game = dynamic(() => import('./components/Game'), {
 export default function Home() {
   const [showAuth, setShowAuth] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSaveScore, setShowSaveScore] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [pendingScore, setPendingScore] = useState<{
+    score: number;
+    levelReached: number;
+    shellsCollected: number;
+    bossesDefeated: number;
+  } | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
+
+  // Show tutorial on first visit
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('crabSeenTutorial');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+      localStorage.setItem('crabSeenTutorial', 'true');
+    }
+  }, []);
+
+  // Listen for game over events from Phaser
+  useEffect(() => {
+    const handleGameOver = (event: CustomEvent) => {
+      const { score, levelReached, shellsCollected, bossesDefeated, isLoggedIn } = event.detail;
+      
+      // Only show save prompt if not logged in and score > 0
+      if (!isLoggedIn && score > 0) {
+        setPendingScore({ score, levelReached, shellsCollected, bossesDefeated });
+        setShowSaveScore(true);
+      }
+    };
+
+    window.addEventListener('gameOver' as any, handleGameOver as any);
+    return () => window.removeEventListener('gameOver' as any, handleGameOver as any);
+  }, []);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -100,6 +135,14 @@ export default function Home() {
     setGameStarted(true);
   };
 
+  const handleSaveScoreSuccess = (user: string, id: string) => {
+    setUsername(user);
+    setUserId(id);
+    setShowSaveScore(false);
+    setPendingScore(null);
+    setShowLeaderboard(true); // Show them the leaderboard!
+  };
+
   const handleLogout = async () => {
     // Sign out from Supabase if using OAuth
     await supabase.auth.signOut();
@@ -161,6 +204,13 @@ export default function Home() {
               <span className="hidden sm:inline">📊 Leaderboard</span>
               <span className="sm:hidden">📊</span>
             </button>
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 sm:px-4 rounded-lg text-sm sm:text-base"
+            >
+              <span className="hidden sm:inline">❓ Help</span>
+              <span className="sm:hidden">❓</span>
+            </button>
           </div>
         </div>
         
@@ -203,6 +253,24 @@ export default function Home() {
         <Leaderboard
           onClose={() => setShowLeaderboard(false)}
         />
+      )}
+
+      {showSaveScore && pendingScore && (
+        <SaveScoreModal
+          score={pendingScore.score}
+          levelReached={pendingScore.levelReached}
+          shellsCollected={pendingScore.shellsCollected}
+          bossesDefeated={pendingScore.bossesDefeated}
+          onClose={() => {
+            setShowSaveScore(false);
+            setPendingScore(null);
+          }}
+          onSuccess={handleSaveScoreSuccess}
+        />
+      )}
+
+      {showTutorial && (
+        <Tutorial onClose={() => setShowTutorial(false)} />
       )}
     </main>
   );
