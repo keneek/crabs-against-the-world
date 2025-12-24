@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/elf",
+      "destination": "/games/elf-maker",
+      "permanent": false
+    }
+  ]
+}
