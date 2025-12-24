@@ -168,6 +168,3 @@ export function generateRoomCode(): string {
   const christmasWords = ['SNOW', 'BELL', 'TREE', 'STAR', 'GIFT', 'COAL', 'DEER', 'ELFS', 'NOEL', 'WRAP', 'YULE', 'PINE', 'TOYS', 'SLED', 'MINT'];
   return christmasWords[Math.floor(Math.random() * christmasWords.length)];
 }
-
-
-

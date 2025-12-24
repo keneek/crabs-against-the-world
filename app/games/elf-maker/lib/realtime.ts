@@ -276,6 +276,3 @@ export async function cleanupOldRooms(): Promise<void> {
     .eq('status', 'waiting')
     .lt('created_at', oneHourAgo);
 }
-
-
-
