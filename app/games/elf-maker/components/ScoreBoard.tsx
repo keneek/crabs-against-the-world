@@ -96,3 +96,4 @@ export default function ScoreBoard({ onClose, showClose = true }: ScoreBoardProp
 }
 
 
+
