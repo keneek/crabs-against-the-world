@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ColorCode, christmasColors } from '../lib/pixel-art';
 
 interface PixelCanvasProps {
@@ -9,7 +9,13 @@ interface PixelCanvasProps {
   onPixelClick: (row: number, col: number) => void;
   disabled?: boolean;
   showGrid?: boolean;
+  cursorPos?: { row: number; col: number };
+  showCursor?: boolean;
 }
+
+// Custom hammer cursor SVG - tip is at top-left for accurate clicking
+// The hammer head points to top-left, hotspot at (2, 2) for the tip
+const HAMMER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='handle' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23D97706'/%3E%3Cstop offset='100%25' style='stop-color:%23B45309'/%3E%3C/linearGradient%3E%3ClinearGradient id='head' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%236B7280'/%3E%3Cstop offset='100%25' style='stop-color:%234B5563'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='12' y='12' width='16' height='4' rx='1' fill='url(%23handle)' transform='rotate(-45 20 14)'/%3E%3Crect x='2' y='2' width='14' height='8' rx='2' fill='url(%23head)' transform='rotate(-45 9 6)'/%3E%3Crect x='4' y='4' width='10' height='4' rx='1' fill='%239CA3AF' transform='rotate(-45 9 6)'/%3E%3C/svg%3E") 2 2, crosshair`;
 
 export default function PixelCanvas({
   grid,
@@ -17,16 +23,22 @@ export default function PixelCanvas({
   onPixelClick,
   disabled = false,
   showGrid = true,
+  cursorPos,
+  showCursor = false,
 }: PixelCanvasProps) {
   const gridSize = grid.length;
+  const [lastPainted, setLastPainted] = useState<string | null>(null);
   
   // Calculate pixel size based on grid
-  const canvasSize = Math.min(320, window?.innerWidth ? window.innerWidth - 48 : 320);
+  const canvasSize = Math.min(320, typeof window !== 'undefined' ? window.innerWidth - 48 : 320);
   const pixelSize = Math.floor(canvasSize / gridSize);
 
   const handlePixelClick = useCallback((row: number, col: number) => {
     if (!disabled) {
       onPixelClick(row, col);
+      setLastPainted(`${row}-${col}`);
+      // Clear animation trigger after animation completes
+      setTimeout(() => setLastPainted(null), 200);
     }
   }, [disabled, onPixelClick]);
 
@@ -58,7 +70,7 @@ export default function PixelCanvas({
       style={{
         width: pixelSize * gridSize,
         height: pixelSize * gridSize,
-        cursor: disabled ? 'not-allowed' : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E🔨%3C/text%3E%3C/svg%3E") 16 16, crosshair`,
+        cursor: disabled ? 'not-allowed' : HAMMER_CURSOR,
       }}
     >
       {/* Grid background */}
@@ -84,6 +96,8 @@ export default function PixelCanvas({
         {grid.map((row, rowIndex) =>
           row.map((pixel, colIndex) => {
             const color = christmasColors[pixel];
+            const isJustPainted = lastPainted === `${rowIndex}-${colIndex}`;
+            const isKeyboardCursor = showCursor && cursorPos?.row === rowIndex && cursorPos?.col === colIndex;
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
@@ -92,9 +106,11 @@ export default function PixelCanvas({
                 onClick={() => handlePixelClick(rowIndex, colIndex)}
                 onMouseMove={(e) => handleMouseMove(e, rowIndex, colIndex)}
                 className={`
-                  transition-colors duration-75
-                  ${!disabled ? 'hover:opacity-80 active:scale-95' : ''}
+                  transition-all duration-100
+                  ${!disabled ? 'hover:opacity-80 hover:scale-105' : ''}
                   ${color ? '' : 'bg-transparent'}
+                  ${isJustPainted ? 'animate-paint-pop' : ''}
+                  ${isKeyboardCursor ? 'ring-2 ring-offset-1 ring-blue-500 z-10' : ''}
                 `}
                 style={{
                   width: pixelSize,
@@ -107,6 +123,18 @@ export default function PixelCanvas({
           })
         )}
       </div>
+
+      {/* Paint animation styles */}
+      <style jsx>{`
+        @keyframes paint-pop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.3); }
+          100% { transform: scale(1); }
+        }
+        .animate-paint-pop {
+          animation: paint-pop 0.2s ease-out;
+        }
+      `}</style>
 
       {/* Disabled overlay */}
       {disabled && (

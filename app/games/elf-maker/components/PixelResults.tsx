@@ -1,6 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { PixelScore, PixelTemplate, christmasColors, ColorCode } from '../lib/pixel-art';
+import Confetti from './Confetti';
 
 interface PixelResultsProps {
   score: PixelScore;
@@ -23,6 +25,17 @@ export default function PixelResults({
   onNextRound,
   isLastRound,
 }: PixelResultsProps) {
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [animateIn, setAnimateIn] = useState(false);
+
+  useEffect(() => {
+    // Trigger confetti for perfect scores
+    if (score.isPerfect || score.accuracy >= 90) {
+      setShowConfetti(true);
+    }
+    // Trigger entry animation
+    setTimeout(() => setAnimateIn(true), 50);
+  }, [score]);
   const getMessage = () => {
     if (score.isPerfect) {
       return { emoji: '⭐', text: 'PERFECT!', subtext: 'Master Elf!', color: 'text-yellow-500' };
@@ -45,7 +58,14 @@ export default function PixelResults({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-900 via-green-900 to-red-900 flex items-center justify-center p-4">
-      <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 max-w-lg w-full">
+      {/* Confetti for high scores */}
+      <Confetti 
+        active={showConfetti} 
+        duration={4000} 
+        onComplete={() => setShowConfetti(false)} 
+      />
+
+      <div className={`bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 max-w-lg w-full transition-all duration-500 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         {/* Round Info */}
         <p className="text-center text-sm text-gray-500 mb-2">
           Round {roundNumber} of {totalRounds}
@@ -53,8 +73,12 @@ export default function PixelResults({
 
         {/* Result Message */}
         <div className="text-center mb-6">
-          <span className="text-6xl block mb-2">{message.emoji}</span>
-          <h2 className={`text-3xl font-bold ${message.color}`}>{message.text}</h2>
+          <span className={`text-6xl block mb-2 ${score.isPerfect ? 'animate-bounce' : ''}`}>
+            {message.emoji}
+          </span>
+          <h2 className={`text-3xl font-bold ${message.color} ${score.isPerfect ? 'animate-pulse' : ''}`}>
+            {message.text}
+          </h2>
           <p className="text-gray-600">{message.subtext}</p>
         </div>
 
