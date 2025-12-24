@@ -42,21 +42,23 @@ function PixelGrid({ template, pixelSize }: { template: PixelTemplate; pixelSize
 export default function ReferencePanel({ template, compact = false }: ReferencePanelProps) {
   const [isEnlarged, setIsEnlarged] = useState(false);
   const gridSize = template.grid.length;
-  const pixelSize = compact ? 8 : 12;
+  // Smaller on mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const pixelSize = compact ? 8 : (isMobile ? 10 : 12);
   const panelSize = pixelSize * gridSize;
   const enlargedPixelSize = 32;
   const enlargedPanelSize = enlargedPixelSize * gridSize;
 
   return (
     <>
-      <div className={`bg-white/90 backdrop-blur rounded-xl shadow-lg ${compact ? 'p-2' : 'p-4'}`}>
+      <div className={`bg-white/90 backdrop-blur rounded-xl shadow-lg ${compact ? 'p-2' : 'p-3 md:p-4'}`}>
         {/* Header */}
-        <div className={`${compact ? 'mb-2' : 'mb-3'}`}>
-          <p className={`${compact ? 'text-xs' : 'text-sm'} font-bold text-green-700`}>
+        <div className={`${compact ? 'mb-2' : 'mb-2 md:mb-3'}`}>
+          <p className={`${compact ? 'text-xs' : 'text-xs md:text-sm'} font-bold text-green-700`}>
             🎯 Make this!
           </p>
           {!compact && (
-            <p className="text-xs text-gray-500">{template.name}</p>
+            <p className="text-[10px] md:text-xs text-gray-500">{template.name}</p>
           )}
         </div>
 
@@ -75,9 +77,9 @@ export default function ReferencePanel({ template, compact = false }: ReferenceP
           <PixelGrid template={template} pixelSize={pixelSize} />
         </button>
 
-        {/* Hint */}
+        {/* Hint - hidden on mobile */}
         {!compact && (
-          <p className="text-xs text-gray-400 mt-2 text-center">
+          <p className="hidden md:block text-xs text-gray-400 mt-2 text-center">
             Click to enlarge 🔍
           </p>
         )}

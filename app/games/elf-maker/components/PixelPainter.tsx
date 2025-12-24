@@ -225,62 +225,77 @@ export default function PixelPainter({
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-900 via-green-900 to-red-900 p-4">
       {/* Header */}
-      <div className="max-w-4xl mx-auto mb-4">
-        <div className="bg-white/90 backdrop-blur rounded-xl p-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🧝</span>
-            <span className="font-bold text-green-700">Elf Maker</span>
-            {/* Mute Toggle */}
-            <button
-              onClick={toggleMute}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
-            >
-              {isMuted ? '🔇' : '🔊'}
-            </button>
+      <div className="max-w-4xl mx-auto mb-2 md:mb-4">
+        <div className="bg-white/90 backdrop-blur rounded-xl p-2 md:p-3">
+          {/* Top row - always visible */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-3">
+              <span className="text-xl md:text-2xl">🧝</span>
+              <span className="font-bold text-green-700 text-sm md:text-base">Elf Maker</span>
+              {/* Mute Toggle */}
+              <button
+                onClick={toggleMute}
+                className="p-1 md:p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+              >
+                {isMuted ? '🔇' : '🔊'}
+              </button>
+            </div>
+
+            {/* Progress Indicator - hidden on mobile, shown on desktop */}
+            <div className="hidden md:flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-lg">
+                <span className="text-sm">🎨</span>
+                <span className="text-sm font-medium text-gray-700">
+                  {pixelsPainted} painted
+                </span>
+              </div>
+              <div className="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-lg">
+                <span className="text-sm">✓</span>
+                <span className="text-sm font-medium text-green-700">
+                  {matchPercent}% match
+                </span>
+              </div>
+            </div>
+            
+            {/* Timer */}
+            <div className="flex items-center gap-1 md:gap-2">
+              <span className="text-base md:text-lg">⏱️</span>
+              <div className="w-16 md:w-32 h-2 md:h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-100 ${
+                    timePercent > 50 ? 'bg-green-500' : timePercent > 25 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${timePercent}%` }}
+                />
+              </div>
+              <span className={`font-bold text-sm md:text-base min-w-[3ch] ${
+                timePercent <= 25 ? 'text-red-600' : 'text-gray-700'
+              }`}>
+                {timeSeconds}s
+              </span>
+            </div>
           </div>
 
-          {/* Progress Indicator */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-lg">
-              <span className="text-sm">🎨</span>
-              <span className="text-sm font-medium text-gray-700">
-                {pixelsPainted} painted
-              </span>
+          {/* Mobile-only progress row */}
+          <div className="flex md:hidden items-center justify-center gap-3 mt-2 pt-2 border-t border-gray-200">
+            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-xs">
+              <span>🎨</span>
+              <span className="font-medium text-gray-700">{pixelsPainted}</span>
             </div>
-            <div className="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-lg">
-              <span className="text-sm">✓</span>
-              <span className="text-sm font-medium text-green-700">
-                {matchPercent}% match
-              </span>
+            <div className="flex items-center gap-1 bg-green-100 px-2 py-0.5 rounded text-xs">
+              <span>✓</span>
+              <span className="font-medium text-green-700">{matchPercent}%</span>
             </div>
-          </div>
-          
-          {/* Timer */}
-          <div className="flex items-center gap-2">
-            <span className="text-lg">⏱️</span>
-            <div className="w-32 h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-100 ${
-                  timePercent > 50 ? 'bg-green-500' : timePercent > 25 ? 'bg-yellow-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${timePercent}%` }}
-              />
-            </div>
-            <span className={`font-bold min-w-[3ch] ${
-              timePercent <= 25 ? 'text-red-600' : 'text-gray-700'
-            }`}>
-              {timeSeconds}s
-            </span>
           </div>
         </div>
       </div>
 
       {/* Main Game Area */}
       <div className="max-w-4xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 items-start justify-center">
+        <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-start justify-center">
           {/* Left Side: Reference + Colors */}
-          <div className="flex flex-row md:flex-col gap-4">
+          <div className="flex flex-row md:flex-col gap-2 md:gap-4 w-full md:w-auto justify-center">
             <ReferencePanel template={template} />
             <ColorPalette
               selectedColor={selectedColor}
@@ -294,9 +309,9 @@ export default function PixelPainter({
           </div>
 
           {/* Right Side: Canvas */}
-          <div className="flex flex-col items-center">
-            <div className="bg-white/90 backdrop-blur rounded-xl p-4 shadow-lg">
-              <p className="text-center text-sm text-gray-600 mb-3">
+          <div className="flex flex-col items-center w-full md:w-auto">
+            <div className="bg-white/90 backdrop-blur rounded-xl p-3 md:p-4 shadow-lg">
+              <p className="text-center text-xs md:text-sm text-gray-600 mb-2 md:mb-3">
                 🔨 Tap or drag to paint!
               </p>
               <PixelCanvas
@@ -313,23 +328,24 @@ export default function PixelPainter({
             <button
               onClick={handleSubmit}
               disabled={disabled}
-              className="mt-4 px-8 py-4 bg-gradient-to-r from-green-600 to-green-500 
-                text-white text-xl font-bold rounded-xl 
+              className="mt-3 md:mt-4 px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-green-600 to-green-500 
+                text-white text-lg md:text-xl font-bold rounded-xl 
                 hover:from-green-700 hover:to-green-600 
+                active:from-green-800 active:to-green-700
                 transition-all shadow-lg hover:shadow-xl 
-                transform hover:scale-[1.02]
+                transform hover:scale-[1.02] active:scale-[0.98]
                 disabled:opacity-50 disabled:cursor-not-allowed
                 flex items-center gap-2"
             >
-              <span className="text-2xl">🔨</span>
+              <span className="text-xl md:text-2xl">🔨</span>
               Done! Submit Toy
             </button>
           </div>
         </div>
       </div>
 
-      {/* Instructions Footer */}
-      <div className="max-w-4xl mx-auto mt-4">
+      {/* Instructions Footer - hidden on mobile to save space */}
+      <div className="hidden md:block max-w-4xl mx-auto mt-4">
         <div className="bg-white/80 backdrop-blur rounded-xl p-3 text-center">
           <p className="text-sm text-gray-600">
             <span className="font-bold text-green-700">Tip:</span> Match the reference image as closely as possible! 
