@@ -169,3 +169,4 @@ export function generateRoomCode(): string {
   return christmasWords[Math.floor(Math.random() * christmasWords.length)];
 }
 
+
